@@ -19,4 +19,10 @@ for spec in specs:
   assert next(p for p in plugins if p['name']==spec['name'])['activated'] is False,spec['name']
 import subprocess
 subprocess.run(['docker','exec','dafeiyu','curl','-fsS','http://127.0.0.1:11434/api/version'],check=True,stdout=subprocess.DEVNULL)
+request=urllib.request.Request(base+'/api/v1/plugins/extensions/meme_manager/packs/import/session',data=json.dumps({'filename':'storage-check.zip','total_chunks':1}).encode(),headers={'Content-Type':'application/json'})
+session=json.load(opener.open(request))
+if isinstance(session.get('data'),dict):session=session['data']
+session_id=session['session_id']
+subprocess.run(['docker','exec','dafeiyu','test','-f','/tmp/dafeiyu-meme-manager/pack_import_sessions/'+session_id+'.json'],check=True)
 print('PASS:',len(specs),'pinned plugins import; dependent features start disabled; Ollama is reachable on loopback')
+print('PASS: actual meme upload staging uses local temporary storage')

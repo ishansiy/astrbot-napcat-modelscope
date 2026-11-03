@@ -135,6 +135,8 @@ def main():
     if not onebot.exists():
         write_json(onebot,{'network':{'httpServers':[],'httpSseServers':[],'httpClients':[],'websocketServers':[],'websocketClients':[{'name':'astrbot','enable':True,'url':'ws://127.0.0.1:6199/ws','messagePostFormat':'array','reportSelfMessage':False,'token':creds['onebot_token'],'debug':False,'heartInterval':30000,'reconnectInterval':5000}]},'musicSignUrl':'','enableLocalFile2Url':True,'parseMultMsg':False})
     disabled_plugins=seed_plugins(data)
+    from plugin_compat import configure_upload_cache
+    configure_upload_cache(data/'plugins')
     asyncio.run(seed_persona(data,disabled_plugins))
     (data/'home').mkdir(exist_ok=True)
     (base/'ollama').mkdir(exist_ok=True)
