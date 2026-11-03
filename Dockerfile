@@ -10,7 +10,7 @@ RUN pacman -Syu --noconfirm --needed \
     ca-certificates curl git uv python nodejs npm base-devel openssl unzip jq \
     nginx supervisor tigervnc dbus xfce4 xfce4-terminal mousepad firefox sudo \
     noto-fonts noto-fonts-cjk ttf-dejavu adwaita-icon-theme xorg-xprop xorg-xwininfo \
-    ffmpeg nss libnotify libsecret mesa alsa-lib gtk3 libxss libxtst \
+    ffmpeg ollama nss libnotify libsecret mesa alsa-lib gtk3 libxss libxtst \
     libx11 libxcb libxkbcommon libxkbcommon-x11 at-spi2-core \
     && pacman -Scc --noconfirm \
     && useradd -m -u 1000 -s /bin/bash desktop \
@@ -31,8 +31,7 @@ RUN uv python install 3.12 && uv venv --python 3.12 /opt/astrbot-venv \
 COPY deploy /opt/dafeiyu
 COPY persona /opt/dafeiyu/persona
 RUN python /opt/dafeiyu/fetch_plugins.py && \
-    uv pip install --python /opt/astrbot-venv/bin/python -r /opt/plugin-seeds/astrbot_plugin_livingmemory/requirements.txt \
-      -r /opt/plugin-seeds/astrbot_plugin_proactive_chat/requirements.txt dashscope imageio-ffmpeg && \
+    python /opt/dafeiyu/install_plugin_deps.py && \
     mkdir -p /app/napcat /app/.config/QQ /AstrBot/data && \
     unzip -q /opt/NapCat.Shell.zip -d /app/napcat && \
     rm /opt/NapCat.Shell.zip && \

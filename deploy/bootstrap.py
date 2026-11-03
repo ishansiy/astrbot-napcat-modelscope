@@ -34,18 +34,30 @@ def seed_plugins(data):
     from astrbot.core.config.default import DEFAULT_VALUE_MAP
     plugins=data/'plugins'
     plugins.mkdir(exist_ok=True)
+    specs=json.loads(Path('/opt/dafeiyu/plugins.lock.json').read_text())
+    from fetch_plugins import fetch_plugin
+    for spec in specs:
+        target=plugins/spec['name']
+        seed=Path('/opt/plugin-seeds')/spec['name']
+        if spec.get('runtime_download') and not target.exists() and not seed.exists():
+            fetch_plugin(spec,seed)
+    newly_installed=[]
     for source in Path('/opt/plugin-seeds').iterdir():
         target=plugins/source.name
         if not target.exists():
             shutil.copytree(source,target)
+            newly_installed.append(source.name)
     config=data/'config'
     config.mkdir(exist_ok=True)
-    for name in ['astrbot_plugin_livingmemory','astrbot_plugin_proactive_chat']:
+    for spec in specs:
+        name=spec['name']
         path=config/(name+'_config.json')
         if path.exists(): continue
-        schema=json.loads((plugins/name/'_conf_schema.json').read_text())
+        schema_file=plugins/name/'_conf_schema.json'
+        if not schema_file.exists():continue
+        schema=json.loads(schema_file.read_text(encoding='utf-8'))
         def defaults(items):
-            return {k:defaults(v['items']) if v.get('type')=='object' else copy.deepcopy(v.get('default',DEFAULT_VALUE_MAP[v['type']])) for k,v in items.items()}
+            return {k:defaults(v.get('items',{})) if v.get('type')=='object' else copy.deepcopy(v.get('default',DEFAULT_VALUE_MAP.get(v.get('type')))) for k,v in items.items()}
         value=defaults(schema)
         if name.endswith('livingmemory'):
             # The exact key is resolved from the pinned schema rather than guessed.
@@ -54,18 +66,26 @@ def seed_plugins(data):
                     section['memory_scope_mode']='session'
             value['session_manager']['enable_full_group_capture']=False
             value['provider_settings']['embedding_provider_id']=os.environ.get('EMBEDDING_PROVIDER_ID','')
-        else:
+        elif name.endswith('proactive_chat'):
             value['friend_settings']['enable']=False
             value['group_settings']['enable']=False
             value['web_admin']['enabled']=False
             value['friend_settings']['schedule_settings'].update(min_interval_minutes=120,max_interval_minutes=240,quiet_hours='23-8',max_unanswered_times=1)
         write_json(path,value)
+    return [spec['name'] for spec in specs if spec['name'] in newly_installed and spec.get('enabled_on_install') is False]
 
-async def seed_persona(data):
+async def seed_persona(data, disabled_plugins=None):
     from astrbot.core.db.sqlite import SQLiteDatabase
     db=SQLiteDatabase(str(data/'data_v4.db'))
     try:
         await db.initialize()
+        if disabled_plugins:
+            current=await db.get_preference('global','global','inactivated_plugins')
+            value=copy.deepcopy(current.value.get('val',[]) if current else [])
+            for name in disabled_plugins:
+                module='data.plugins.'+name+'.main'
+                if module not in value:value.append(module)
+            await db.insert_preference_or_update('global','global','inactivated_plugins',{'val':value})
         if await db.get_persona_by_id('大肥鱼') is None:
             prompt=Path('/opt/dafeiyu/persona/dafeiyu.md').read_text(encoding='utf-8')
             await db.insert_persona('大肥鱼',prompt)
@@ -114,8 +134,9 @@ def main():
     onebot=base/'napcat/onebot11.json'
     if not onebot.exists():
         write_json(onebot,{'network':{'httpServers':[],'httpSseServers':[],'httpClients':[],'websocketServers':[],'websocketClients':[{'name':'astrbot','enable':True,'url':'ws://127.0.0.1:6199/ws','messagePostFormat':'array','reportSelfMessage':False,'token':creds['onebot_token'],'debug':False,'heartInterval':30000,'reconnectInterval':5000}]},'musicSignUrl':'','enableLocalFile2Url':True,'parseMultMsg':False})
-    seed_plugins(data)
-    asyncio.run(seed_persona(data))
+    disabled_plugins=seed_plugins(data)
+    asyncio.run(seed_persona(data,disabled_plugins))
+    (base/'ollama').mkdir(exist_ok=True)
     from desktop_setup import setup_desktop
     setup_desktop(base,creds,credentials)
     print('[stack] Persistent data and initial configuration ready. Credentials are supplied via Secrets; no passwords are logged.')

@@ -14,5 +14,125 @@
     "revision": "0246e98843494a5e37b29d047adc722cdd5d739d",
     "name": "astrbot_plugin_face_convert",
     "subdir": "plugin/astrbot_plugin_face_convert"
+  },
+  {
+    "repo": "Him666233/astrbot_plugin_group_chat_plus",
+    "revision": "aa97e0e35a18733e73db753238dd2a3021446e42",
+    "name": "astrbot_plugin_group_chat_plus",
+    "enabled_on_install": false,
+    "license": "AGPL-3.0"
+  },
+  {
+    "repo": "anka-afk/astrbot_plugin_meme_manager",
+    "revision": "ec80e0a12f7651e86276dfce247f9e05d136ad93",
+    "name": "meme_manager",
+    "enabled_on_install": true,
+    "license": "MIT"
+  },
+  {
+    "repo": "nagatoquin33/astrbot_plugin_stealer",
+    "revision": "30f8a8009a06eed53cdde28276c93c01b75b6da7",
+    "name": "astrbot_plugin_stealer",
+    "enabled_on_install": false,
+    "license": "AGPL-3.0"
+  },
+  {
+    "repo": "diaomin66/astrbot_plugin_omnidraw",
+    "revision": "4d1b41e4bee3ed8124b947144b54686fd5060033",
+    "name": "astrbot_plugin_omnidraw",
+    "enabled_on_install": false,
+    "runtime_download": true,
+    "license": "not-declared-runtime-download-only"
+  },
+  {
+    "repo": "leekooyo/astrbot_plugin_pokepro",
+    "revision": "04735f8e6df1ba33ecd7e71d5c98c55d5f151ba9",
+    "name": "astrbot_plugin_pokepro",
+    "enabled_on_install": false,
+    "license": "GPL-3.0"
+  },
+  {
+    "repo": "leekooyo/astrbot_plugin_memelite",
+    "revision": "bf2b45e6151848806e9fa18f4461422d74555775",
+    "name": "astrbot_plugin_memelite",
+    "enabled_on_install": false,
+    "license": "AGPL-3.0"
+  },
+  {
+    "repo": "pupotato/astrbot_plugin_qqprofile",
+    "revision": "fd799ce42bfa08c89ab869c42374cd3bf3779574",
+    "name": "astrbot_plugin_qqprofile",
+    "enabled_on_install": false,
+    "license": "AGPL-3.0"
+  },
+  {
+    "repo": "Nya-Nya-Hoshino/astrbot_plugin_qzone_pr",
+    "revision": "6df214576f2302cd9dd2d1d500e76a39bb557cd3",
+    "name": "astrbot_plugin_qzone",
+    "enabled_on_install": false,
+    "license": "GPL-3.0"
+  },
+  {
+    "repo": "Mnbqq/astrbot_plugin_m",
+    "revision": "08902c84384a88b7576ce87c06c1c0934dbece4d",
+    "name": "astrbot_plugin_m",
+    "enabled_on_install": false,
+    "runtime_download": true,
+    "license": "not-declared-runtime-download-only"
+  },
+  {
+    "repo": "chq201019/astrbot_plugin_parser",
+    "revision": "0444809a82756be03f0d3fc9f40a151d5439f9b9",
+    "name": "astrbot_plugin_parser",
+    "enabled_on_install": false,
+    "license": "MIT"
+  },
+  {
+    "repo": "whyever77/dafeiyu-astrbot",
+    "revision": "0246e98843494a5e37b29d047adc722cdd5d739d",
+    "name": "astrbot_plugin_schedule_awareness",
+    "subdir": "plugin/astrbot_plugin_schedule_awareness",
+    "license": "MIT",
+    "enabled_on_install": true
+  },
+  {
+    "repo": "whyever77/dafeiyu-astrbot",
+    "revision": "0246e98843494a5e37b29d047adc722cdd5d739d",
+    "name": "astrbot_plugin_bili_activity",
+    "subdir": "plugin/astrbot_plugin_bili_activity",
+    "license": "MIT",
+    "enabled_on_install": false
+  },
+  {
+    "repo": "zexuanw958-svg/dafeiyu-config-pack",
+    "revision": "8c01b0361b8a4baff5be3d2bc67ed55108953086",
+    "name": "astrbot_plugin_dafeiyu_clean",
+    "subdir": "plugins/astrbot_plugin_dafeiyu_clean",
+    "license": "MIT",
+    "enabled_on_install": true
+  },
+  {
+    "repo": "zexuanw958-svg/dafeiyu-config-pack",
+    "revision": "8c01b0361b8a4baff5be3d2bc67ed55108953086",
+    "name": "astrbot_plugin_dafeiyu_signature",
+    "subdir": "plugins/astrbot_plugin_dafeiyu_signature",
+    "license": "MIT",
+    "enabled_on_install": false
+  },
+  {
+    "repo": "zexuanw958-svg/dafeiyu-config-pack",
+    "revision": "8c01b0361b8a4baff5be3d2bc67ed55108953086",
+    "name": "astrbot_plugin_dafeiyu_sing",
+    "subdir": "plugins/astrbot_plugin_dafeiyu_sing",
+    "license": "MIT",
+    "enabled_on_install": false
+  },
+  {
+    "repo": "zexuanw958-svg/dafeiyu-config-pack",
+    "revision": "8c01b0361b8a4baff5be3d2bc67ed55108953086",
+    "name": "astrbot_plugin_seed_audio_tts",
+    "subdir": "plugins/astrbot_plugin_seed_audio_tts",
+    "license": "MIT",
+    "enabled_on_install": false
   }
 ]
