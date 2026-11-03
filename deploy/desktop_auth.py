@@ -15,6 +15,7 @@ from urllib.parse import parse_qs
 CONFIG=Path('/run/desktop-auth.json')
 COOKIE='dafeiyu_desktop'
 TTL=12*3600
+FRAME_POLICY="frame-ancestors 'self' https://www.modelscope.ai https://modelscope.ai"
 failures=deque()
 lock=Lock()
 PAGE='''<!doctype html><html lang="zh-CN"><meta charset="utf-8">
@@ -70,9 +71,11 @@ class Handler(BaseHTTPRequestHandler):
             value=cookie[COOKIE].value if COOKIE in cookie else ''
             return self.send(204 if valid(value,config['session_secret']) else 401)
         if self.path.split('?',1)[0]=='/desktop/login':
-            return self.send(200,PAGE.encode(),{'Content-Type':'text/html; charset=utf-8','X-Frame-Options':'SAMEORIGIN'})
+            return self.send(200,PAGE.encode(),{'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':FRAME_POLICY})
         if self.path=='/desktop/logout':
-            return self.send(303,headers={'Location':'/desktop/login','Set-Cookie':f'{COOKIE}=; Path=/desktop; HttpOnly; SameSite=Lax; Max-Age=0'})
+            host=self.headers.get('X-Forwarded-Host','')
+            attributes='SameSite=Lax' if host.split(':')[0] in ['localhost','127.0.0.1'] else 'SameSite=None; Secure; Partitioned'
+            return self.send(303,headers={'Location':'/desktop/login','Set-Cookie':f'{COOKIE}=; Path=/desktop; HttpOnly; {attributes}; Max-Age=0'})
         self.send(404)
 
     def do_POST(self):
@@ -96,8 +99,8 @@ class Handler(BaseHTTPRequestHandler):
         if not ok:
             with lock: failures.append(time.monotonic())
             return self.send(401,b'Incorrect username or password. Return to the login page to retry.')
-        secure='' if host.split(':')[0] in ['localhost','127.0.0.1'] else '; Secure'
-        cookie=f'{COOKIE}={issue(config["session_secret"])}; Path=/desktop; HttpOnly; SameSite=Lax; Max-Age={TTL}'+secure
+        attributes='SameSite=Lax' if host.split(':')[0] in ['localhost','127.0.0.1'] else 'SameSite=None; Secure; Partitioned'
+        cookie=f'{COOKIE}={issue(config["session_secret"])}; Path=/desktop; HttpOnly; {attributes}; Max-Age={TTL}'
         self.send(303,headers={'Location':'/desktop/vnc.html?autoconnect=1&resize=remote&path=%2Fdesktop%2Fwebsockify','Set-Cookie':cookie})
 
 
