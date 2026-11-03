@@ -21,6 +21,8 @@ app_port: 7860
 
 已部署的空间：[打开魔搭国际站](https://www.modelscope.ai/studios/uaa7813d3/astrbot-napcat-dafeiyu)。
 
+[直接打开桌面登录](https://www.modelscope.ai/studios/uaa7813d3/astrbot-napcat-dafeiyu?mode=full&app_path=%2Fdesktop%2Flogin)。请使用魔搭包装页面以取得平台访问凭据，直接访问 ms.fun 裸域名可能返回 403。桌面登录允许官方魔搭页面嵌入，并使用 Secure/HttpOnly 的分区 Cookie 支持跨站 iframe；原始 VNC 仍仅监听容器回环地址。
+
 创建 Docker 创空间，使用免费 CPU 资源；当前部署按用户要求设为公开，各管理入口仍要求登录。推荐使用本仓库根目录 `Dockerfile` 从锁定的官方组件构建。GHCR 镜像已发布；GitHub 首次发布的镜像默认私有，拉取需要 `read:packages` 凭据。魔搭当前通过同份源码构建，不保存 GitHub 拉取凭据。仅在镜像已设为公开或运行环境已经配置镜像认证时，才可使用：
 
 ```dockerfile
@@ -59,7 +61,7 @@ AstrBot 使用其上游 AGPL-3.0 许可；NapCat 和各插件遵循各自上游�
 
 ## 已验证
 
-2026-11-03：[GitHub Actions](https://github.com/ishansiy/astrbot-napcat-modelscope/actions/runs/41652038671) 已通过源码检查、密码与配置覆盖保护、真实容器双面板登录、Arch/XFCE 与 Firefox 窗口、完整浏览器 noVNC 登录和连接测试、19 个插件加载与启用状态检查、Ollama 服务检查、表情包从临时目录导入持久化挂载的真实读回检查；重启及删除容器重建后的持久化恢复均通过。镜像源码提交：`580ef48d621c93f352adda336999d80820fdff43`，镜像标签：`sha-580ef48d621c`。表情包上传暂存文件使用 `/tmp`，安装后的资源和配置使用官方持久化目录。
+2026-11-03：[GitHub Actions](https://github.com/ishansiy/astrbot-napcat-modelscope/actions/runs/41654700750) 已通过源码检查、密码与配置覆盖保护、真实容器双面板登录、Arch/XFCE 与 Firefox 窗口、完整浏览器 noVNC 登录和连接测试、19 个插件加载与启用状态检查、Ollama 服务检查、表情包从临时目录导入持久化挂载的真实读回检查；重启及删除容器重建后的持久化恢复均通过。镜像源码提交：`a10b3324db7da5f761ed44b73e8a0853a4357010`，镜像标签：`sha-a10b3324db7d`。表情包上传暂存文件使用 `/tmp`，安装后的资源和配置使用官方持久化目录。
 
 魔搭国际站云端验证：公开空间进入 Running；原 AstrBot 密码有效，人格内容的迁移前后 SHA256 一致；NapCat 管理页、独立桌面密码登录、真实云端桌面 WebSocket 均通过。桌面主目录和机器人数据使用官方 `/mnt/workspace/dafeiyu/`，迁移前的备份留在 `astrbot/backups/`。受限容器无法创建嵌套图像解码沙箱时，桌面启动脚本使用 Glycin 官方的容器内兼容选项；VNC 仍仅监听回环地址。
 
