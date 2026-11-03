@@ -1,15 +1,21 @@
 """Provision a persistent desktop without replacing existing bot settings."""
-import grp
+import hashlib
 import json
 import os
 import shutil
-import subprocess
+import secrets
 from pathlib import Path
 
 
 def setup_desktop(base, creds, credentials):
+    changed=False
     if 'desktop_password' not in creds:
         creds['desktop_password']=os.environ.get('DESKTOP_PASSWORD') or creds['dashboard_password']
+        changed=True
+    if 'desktop_session_secret' not in creds:
+        creds['desktop_session_secret']=secrets.token_urlsafe(48)
+        changed=True
+    if changed:
         temp=credentials.with_suffix('.tmp')
         temp.write_text(json.dumps(creds,ensure_ascii=False,indent=2),encoding='utf-8')
         temp.chmod(0o600)
@@ -59,8 +65,9 @@ def setup_desktop(base, creds, credentials):
     runtime.chmod(0o700);os.chown(runtime,1000,1000)
     cache=Path('/tmp/desktop-cache');cache.mkdir(exist_ok=True)
     os.chown(cache,1000,1000)
-    result=subprocess.run(['openssl','passwd','-6','-stdin'],input=creds['desktop_password']+'\n',text=True,capture_output=True,check=True)
-    auth=Path('/run/desktop.htpasswd')
-    auth.write_text('desktop:'+result.stdout.strip()+'\n')
-    auth.chmod(0o640);os.chown(auth,0,grp.getgrnam('http').gr_gid)
+    salt=secrets.token_hex(16)
+    digest=hashlib.pbkdf2_hmac('sha256',creds['desktop_password'].encode(),bytes.fromhex(salt),600000).hex()
+    auth=Path('/run/desktop-auth.json')
+    auth.write_text(json.dumps({'salt':salt,'password_hash':digest,'session_secret':creds['desktop_session_secret']}))
+    auth.chmod(0o600)
     print('[desktop] Arch Linux XFCE profile ready; persistent home:',home)
