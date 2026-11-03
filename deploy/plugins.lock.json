@@ -1,0 +1,18 @@
+[
+  {
+    "repo": "lxfight-s-Astrbot-Plugins/astrbot_plugin_livingmemory",
+    "revision": "9baad49689a4cdc4ef289d0d3ebcf9178140a6b2",
+    "name": "astrbot_plugin_livingmemory"
+  },
+  {
+    "repo": "Pancakes-Labs/astrbot_plugin_proactive_chat",
+    "revision": "95f459ef33208aa2c123c733ba1b5d2188dd0977",
+    "name": "astrbot_plugin_proactive_chat"
+  },
+  {
+    "repo": "whyever77/dafeiyu-astrbot",
+    "revision": "0246e98843494a5e37b29d047adc722cdd5d739d",
+    "name": "astrbot_plugin_face_convert",
+    "subdir": "plugin/astrbot_plugin_face_convert"
+  }
+]

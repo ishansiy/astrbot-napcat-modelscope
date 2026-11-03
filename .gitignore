@@ -1,1 +1,8 @@
-参考文件
+.env
+.env.*
+!.env.example
+data/
+*.db
+*.db-*
+__pycache__/
+*.pyc

@@ -1,0 +1,10 @@
+services:
+  dafeiyu:
+    image: ghcr.io/ishansiy/astrbot-napcat-modelscope:latest
+    ports: ["127.0.0.1:7860:7860"]
+    env_file: .env
+    environment:
+      TZ: Asia/Shanghai
+    volumes: ["./data:/mnt/workspace"]
+    restart: unless-stopped
+    shm_size: 256m

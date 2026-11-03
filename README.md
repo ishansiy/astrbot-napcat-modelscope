@@ -1,111 +1,54 @@
-<!-- 默认中文文档。English version: README_EN.md -->
-
-# AstrBot + NapCat 在 Hugging Face 的部署与使用指南
-
-本仓库将 AstrBot（智能体聊天机器人）与 NapCat（QQ/OneBot 桥接）打包到一个 OpenResty 网关（nginx + Lua）下，适配本地与 Hugging Face Spaces（Docker SDK）。通过 `supervisord` 管理多进程。
-
-上游项目参考：
-- AstrBot: https://github.com/AstrBotDevs/AstrBot
-- NapCat AppImage Build: https://github.com/NapNeko/NapCatAppImageBuild
-
-主要组件与端口：
-- AstrBot（Python 3.10+）：6185（由网关转发）
-- NapCat（AppImage + Xvfb）：6099/3001/6199（由网关转发）
-- OpenResty 网关：7860（对外暴露）
-
-默认路由（监听 7860）：
-- `/` → AstrBot 控制台（默认后端 `http://127.0.0.1:6185`）
-- `/webui/`、`/api/ws/` → NapCat（`http://127.0.0.1:6099`）
-- `/admin/ui/` → 路由管理界面（使用请求头 `X-Admin-Password`，初始值 `admin`）
-
-目录结构概览：
-- `Dockerfile`：构建所有依赖并克隆上游应用
-- `supervisor/supervisord.conf`：进程编排（nginx、Xvfb、Sync、NapCat、AstrBot）
-- `nginx/nginx.conf`：OpenResty 动态路由与管理 API
-- `scripts/`：NapCat 启动脚本
-
 ---
-
-## 环境变量一览（表格）
-
-NapCat（可选）
-
-| 名称 | 必填 | 默认值 | 参考值 | 说明 |
-| --- | --- | --- | --- | --- |
-| `NAPCAT_FLAGS` | 否 | 空 | `--disable-gpu` | 传给 QQ AppImage 的额外参数。以非 root 运行，一般无需 `--no-sandbox`。 |
-| `TZ` | 否 | `Asia/Shanghai` | `Asia/Shanghai` | 时区。 |
-
+title: AstrBot NapCat 大肥鱼
+sdk: docker
+app_port: 7860
 ---
+# AstrBot + NapCat 大肥鱼 · ModelScope
 
-## 本地快速开始（Docker）
-1）构建镜像：
-```
-docker build -t astrbot-napcat-hf:latest .
-```
-2）启动容器（按需替换示例值）：
-```
-docker run -d \
-  -p 7860:7860 \
-  --name astrbot-napcat astrbot-napcat-hf:latest
-```
-3）打开 `http://localhost:7860/`：
-- `/` AstrBot 控制台；首次启动会自动下载前端资源（可能稍慢）。
-- `/webui/` NapCat 管理界面（登录/扫码）。
-- `/admin/ui/` 路由管理界面（默认密码 `admin`）。
+在单个容器中运行 AstrBot、NapCat、Xvfb 和 Nginx，统一通过 7860 访问。此仓库复刻自 [MoYangking/Astrbot-Napcat-huggingface](https://github.com/MoYangking/Astrbot-Napcat-huggingface)，保留 Git 历史与上游关联。魔搭适配版改用官方组件，移除了上游动态路由管理、文件管理器、同步服务和临时代理。
 
----
+## 包含什么
 
-## Hugging Face 部署（Docker SDK）
-1）创建 Space：
-- SDK 选 Docker；若涉及隐私，建议 Private。
-2）推送本仓库到 Space（或连接 GitHub）。
-3）在 Settings → Variables and secrets 配置：
-- 可选：`NAPCAT_FLAGS`（如 `--disable-gpu`）。
-4）硬件：CPU Basic 即可；如需常驻在线，关闭自动休眠。
-5）启动 Space，等待构建完成，访问 Space URL（内部监听 7860）。
-6）首次建议：
-- 打开 `/admin/ui/` 修改路由管理密码。
-- AstrBot：在控制台配置模型与平台。
-- NapCat：在 `/webui/` 完成登录与绑定。
+- AstrBot v4.29.4，NapCat 官方容器中的 QQ NT 和协议端。
+- 自定义“大肥鱼”人格，默认中文、短句聊天，任务优先。
+- 固定源码提交的 LivingMemory、Proactive Chat 和大肥鱼 QQ 表情/媒体插件；来源见 `deploy/plugins.lock.json`。
+- 内部 OneBot 连接预先配好；双方使用相同随机 Token。
+- AstrBot 数据、插件、长期记忆与 QQ 登录资料均位于 `/mnt/workspace/dafeiyu`。
+- 先构建并验证两个管理界面、AstrBot 登录和重启持久化，再通过 GitHub Actions 发布 GHCR 镜像。
 
-参考项目：https://huggingface.co/spaces/MoYang303/astrbot
+## 魔搭国际站
 
----
+创建 **私有 Docker 创空间**，使用免费 CPU 资源。仓库构建入口是根目录 `Dockerfile`；如需直接复用已发布镜像，可将创空间 Dockerfile 写为：
 
-## 扩展：添加新进程（服务）
-
-- 本项目通过 Supervisor 管理多进程（nginx、Xvfb、Sync、NapCat、AstrBot 等）。
-- 如需添加新的服务（Python/Node 等），请阅读：`docs/添加新进程.md`。
-- 文档包含：
-  - 在 Dockerfile 中复制代码、安装依赖与权限设置（非 root，UID 1000）；
-  - 在 `supervisor/supervisord.conf` 中注册进程、设置工作目录与日志；
-  - 可选：将数据目录纳入同步（Sync）与路由暴露到 7860 端口下。
-
----
-
-## 路由管理 API 速查
-- 获取路由：
-```
-curl -H "X-Admin-Password: <pass>" https://<host>/admin/routes.json
-```
-- 替换路由：
-```
-curl -X POST -H "X-Admin-Password: <pass>" -H "Content-Type: application/json" \
-  -d '{"default_backend":"http://127.0.0.1:6185","rules":[...]}' \
-  https://<host>/admin/routes.json
-```
-- 修改密码：
-```
-curl -X POST -H "X-Admin-Password: <old>" -H "Content-Type: application/json" \
-  -d '{"new_password":"<new>"}' https://<host>/admin/password
+```dockerfile
+FROM ghcr.io/ishansiy/astrbot-napcat-modelscope:latest
 ```
 
-## 常见问题（FAQ）
-- 访问 502 或空白页：到 `/admin/ui/` 确认默认后端为 `http://127.0.0.1:6185`。
-- NapCat 启动异常：已使用 `--appimage-extract-and-run` 与 Xvfb，无 GPU 环境建议 `NAPCAT_FLAGS=--disable-gpu`。
-- 首次 AstrBot WebUI 较慢：它会自动下载前端资源，耐心等待即可。
+在创空间 Secrets 设置 `ASTRBOT_ADMIN_PASSWORD`、`NAPCAT_WEBUI_TOKEN`、`ONEBOT_TOKEN`，并可设置 `DEEPSEEK_API_KEY`。普通变量可设置 `OWNER_QQ`（你的聊天主号，非机器人小号）、`TZ=Asia/Shanghai`。
 
----
+首次启动自动生成配置。已有配置不会被环境变量覆盖；后续修改模型、管理员和白名单，请使用 AstrBot 管理面板。更换 Secrets 不会自动重置已有密码。
 
-## 许可证
-本仓库集成上游项目（各自遵循其许可协议），本仓库仅提供配置与自动化胶合代码。请查阅上游仓库了解各自许可。
+| 地址 | 用途 |
+| --- | --- |
+| `/` | AstrBot 管理面板及网页聊天，用户名 `astrbot` |
+| `/napcat/webui/` | NapCat 管理面板，使用 `NAPCAT_WEBUI_TOKEN` 登录并扫描 QQ 二维码 |
+| `/healthz` | AstrBot 就绪检查 |
+
+## 首次接入
+
+1. 用 Secrets 中的密码登录 AstrBot，确认“大肥鱼”人格已存在。
+2. 如果未提供 `DEEPSEEK_API_KEY`，在“模型提供商”填写自己的推理 API Key，启用模型并设为默认。魔搭部署 Token 不会被当成 DeepSeek Key。
+3. 设置管理员 QQ 和访问白名单。`OWNER_QQ` 未提供时，预置哨兵白名单会阻止 QQ 消息触发，网页聊天仍可用。
+4. 打开 NapCat 面板，用 QQ 小号扫码；内部 WebSocket 已指向 `ws://127.0.0.1:6199/ws`。
+5. LivingMemory 需要在插件配置中选择有效的 Embedding 提供商；默认按会话隔离，不采集未触发的全部群聊。配置前不得把插件已安装视为长期记忆已可用。
+6. Proactive Chat 默认关闭。指定私聊会话后再启用，建议间隔 120–240 分钟、免打扰 23–8、最大未回复 1 次。语音、图片转述和视频音轨还需配置相应模型。
+
+免费创空间可能休眠，不能保证全天在线、准时提醒或永久保持 QQ 登录。平台重命名/转移空间可能影响持久化目录，重要资料应另做备份。这里不配置保活流量。
+
+## 本地 Docker
+
+复制 `.env.example` 为 `.env` 并填写，再运行 `docker compose up -d`。只需访问 `http://127.0.0.1:7860`；不需要 privileged、宿主 Docker socket 或额外公开 OneBot 端口。
+
+## 来源与维护
+
+AstrBot 使用其上游 AGPL-3.0 许可；NapCat 和各插件遵循各自上游许可。插件包在构建时取自锁定提交，不包含任何个人账号配置。未对无许可证的上游历史文件重新授权；本仓库保留来源记录。镜像代码及锁定版本均可从本仓库获取。
