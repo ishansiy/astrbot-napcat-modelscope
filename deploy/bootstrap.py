@@ -31,6 +31,7 @@ def link_directory(link, target):
     link.symlink_to(target,target_is_directory=True)
 
 def seed_plugins(data):
+    from astrbot.core.config.default import DEFAULT_VALUE_MAP
     plugins=data/'plugins'
     plugins.mkdir(exist_ok=True)
     for source in Path('/opt/plugin-seeds').iterdir():
@@ -44,7 +45,7 @@ def seed_plugins(data):
         if path.exists(): continue
         schema=json.loads((plugins/name/'_conf_schema.json').read_text())
         def defaults(items):
-            return {k:defaults(v['items']) if v.get('type')=='object' else copy.deepcopy(v.get('default')) for k,v in items.items()}
+            return {k:defaults(v['items']) if v.get('type')=='object' else copy.deepcopy(v.get('default',DEFAULT_VALUE_MAP[v['type']])) for k,v in items.items()}
         value=defaults(schema)
         if name.endswith('livingmemory'):
             # The exact key is resolved from the pinned schema rather than guessed.

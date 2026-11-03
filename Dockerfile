@@ -1,5 +1,5 @@
-ARG ASTRBOT_IMAGE=soulter/astrbot:v4.29.4
-ARG NAPCAT_IMAGE=mlikiowa/napcat-docker:latest
+ARG ASTRBOT_IMAGE=soulter/astrbot:v4.29.4@sha256:72f341f0ffcf6621ef820277642c5d63955f7beeac3683433ce09cac96379c78
+ARG NAPCAT_IMAGE=mlikiowa/napcat-docker@sha256:696e9574a0f6fb2f86cbecba8a32048f2a5823117dc9b13c6c02637ad890fa8b
 FROM ${NAPCAT_IMAGE} AS napcat
 FROM ${ASTRBOT_IMAGE}
 USER root
