@@ -98,7 +98,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(401,b'Incorrect username or password. Return to the login page to retry.')
         secure='' if host.split(':')[0] in ['localhost','127.0.0.1'] else '; Secure'
         cookie=f'{COOKIE}={issue(config["session_secret"])}; Path=/desktop; HttpOnly; SameSite=Lax; Max-Age={TTL}'+secure
-        self.send(303,headers={'Location':'/desktop/vnc.html?autoconnect=1&resize=remote&path=desktop/websockify','Set-Cookie':cookie})
+        self.send(303,headers={'Location':'/desktop/vnc.html?autoconnect=1&resize=remote&path=%2Fdesktop%2Fwebsockify','Set-Cookie':cookie})
 
 
 if __name__=='__main__':
