@@ -18,7 +18,9 @@ app_port: 7860
 
 ## 魔搭国际站
 
-创建 **私有 Docker 创空间**，使用免费 CPU 资源。仓库构建入口是根目录 `Dockerfile`；如需直接复用已发布镜像，可将创空间 Dockerfile 写为：
+已部署的私有空间：[打开魔搭国际站](https://www.modelscope.ai/studios/uaa7813d3/astrbot-napcat-dafeiyu)。
+
+创建 **私有 Docker 创空间**，使用免费 CPU 资源。推荐使用本仓库根目录 `Dockerfile` 从锁定的官方组件构建。GHCR 镜像已发布；GitHub 首次发布的镜像默认私有，拉取需要 `read:packages` 凭据。魔搭当前通过同份源码构建，不保存 GitHub 拉取凭据。仅在镜像已设为公开或运行环境已经配置镜像认证时，才可使用：
 
 ```dockerfile
 FROM ghcr.io/ishansiy/astrbot-napcat-modelscope:latest
@@ -52,3 +54,7 @@ FROM ghcr.io/ishansiy/astrbot-napcat-modelscope:latest
 ## 来源与维护
 
 AstrBot 使用其上游 AGPL-3.0 许可；NapCat 和各插件遵循各自上游许可。插件包在构建时取自锁定提交，不包含任何个人账号配置。未对无许可证的上游历史文件重新授权；本仓库保留来源记录。镜像代码及锁定版本均可从本仓库获取。
+
+## 已验证
+
+2026-11-03：GitHub Actions 已通过源码检查、持久化覆盖保护测试、真实容器双面板访问与 AstrBot 登录、重启及删除容器重建后的持久化恢复。镜像源码提交：`e3006046adb172bfe45e669b1b23a1423ec1cfa7`，镜像标签：`sha-e3006046adb1`。
