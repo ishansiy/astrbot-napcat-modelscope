@@ -134,5 +134,12 @@
     "subdir": "plugins/astrbot_plugin_seed_audio_tts",
     "license": "MIT",
     "enabled_on_install": false
+  },
+  {
+    "name": "astrbot_plugin_dafeiyu_backup",
+    "local_path": "local_plugins/astrbot_plugin_dafeiyu_backup",
+    "revision": "1.0.0",
+    "enabled_on_install": true,
+    "license": "MIT"
   }
 ]

@@ -1,0 +1,32 @@
+{
+  "webdav": {"type":"object","description":"WebDAV 异地备份","items":{
+    "enabled":{"type":"bool","description":"启用 WebDAV 上传","default":false},
+    "url":{"type":"string","description":"WebDAV 备份目录地址","default":"","hint":"完整目录 URL；可随时更换服务，不需要修改代码。"},
+    "username":{"type":"string","description":"WebDAV 用户名","default":""},
+    "password":{"type":"string","description":"WebDAV 密码／应用密码","secret":true,"default":""},
+    "verify_tls":{"type":"bool","description":"校验 HTTPS 证书","default":true}
+  }},
+  "schedule":{"type":"object","description":"频率与保留份数","items":{
+    "enabled":{"type":"bool","description":"启用自动备份","default":false},
+    "cron":{"type":"string","description":"备份时间（Cron）","default":"0 4 * * *","hint":"默认每天 04:00；每 6 小时可填 0 */6 * * *，每周日可填 0 4 * * 0。"},
+    "timezone":{"type":"string","description":"备份时区","default":"Asia/Shanghai"},
+    "local_keep":{"type":"int","description":"本地保留份数","default":2},
+    "remote_keep":{"type":"int","description":"WebDAV 保留份数","default":7}
+  }},
+  "scope":{"type":"object","description":"备份范围","items":{
+    "astrbot":{"type":"bool","description":"AstrBot：记忆、数据库、配置、插件、表情包、知识库","default":true},
+    "desktop":{"type":"bool","description":"桌面文件、用户配置、浏览器资料","default":true},
+    "napcat":{"type":"bool","description":"NapCat 配置","default":true},
+    "qq":{"type":"bool","description":"普通 QQ 登录资料","default":true},
+    "ollama":{"type":"bool","description":"Ollama 模型权重（体积大，可重新下载）","default":false}
+  }},
+  "backup":{"type":"object","description":"存储与加密","items":{
+    "source_root":{"type":"string","description":"持久化数据根目录","default":"/mnt/workspace/dafeiyu"},
+    "local_directory":{"type":"string","description":"本地备份保存目录","default":"/mnt/workspace/dafeiyu/backups","hint":"必须位于官方持久化挂载，不能放在 AstrBot／桌面等备份范围内部。"},
+    "encryption_key":{"type":"string","description":"备份恢复密钥（32 字节 URL-safe Base64）","secret":true,"default":"","hint":"请另行保存。修改密钥只影响新备份，旧备份仍需旧密钥。"},
+    "part_size_mb":{"type":"int","description":"WebDAV 分片大小（MB）","default":64,"hint":"8–256 MB；分片上传后逐片下载校验，完整后才提交备份清单。"}
+  }},
+  "actions":{"type":"object","description":"手动操作","items":{
+    "backup_now":{"type":"bool","description":"立即备份一次","default":false,"hint":"打开并保存后执行一次，随后自动复位；进行中的备份不会重复启动。状态可用管理员指令 /备份状态 查看。"}
+  }}
+}

@@ -44,3 +44,21 @@ if isinstance(readback.get('data'),dict):readback=readback['data']
 assert any(p['id']=='cross-mount-smoke' and p['image_count']==1 for p in readback['packs'])
 subprocess.run(['docker','exec','dafeiyu','test','-f','/mnt/workspace/dafeiyu/astrbot/plugin_data/meme_manager/packs/cross-mount-smoke/memes/happy/probe.png'],check=True)
 print('PASS: an actual archive imports from /tmp into persistent storage and reads back')
+backup_name='astrbot_plugin_dafeiyu_backup'
+backup_api=base+'/api/v1/plugins/extensions/'+backup_name
+config=json.load(opener.open(base+'/api/v1/plugins/config?plugin_id='+backup_name))['data']['config']
+config['backup']['encryption_key']=base64.urlsafe_b64encode(b'T'*32).decode()
+config['backup']['part_size_mb']=8
+request=urllib.request.Request(base+'/api/v1/plugins/config',data=json.dumps({'plugin_id':backup_name,'config':config}).encode(),method='PUT',headers={'Content-Type':'application/json'})
+assert json.load(opener.open(request))['status']=='ok'
+request=urllib.request.Request(backup_api+'/run',data=b'{}',headers={'Content-Type':'application/json'})
+assert json.load(opener.open(request))['data']['started']
+for attempt in range(120):
+ state=json.load(opener.open(backup_api+'/status'))['data']['current']
+ if state.get('status') in ['succeeded','failed']:break
+ time.sleep(2)
+assert state.get('status')=='succeeded',state
+assert state['local_verified'] and {'astrbot','desktop'}<=set(state['scopes'])
+restore_code="import sys;sys.path.insert(0,'/mnt/workspace/dafeiyu/astrbot/plugins/astrbot_plugin_dafeiyu_backup');from core import restore_bundle;import base64;print(restore_bundle(sys.argv[1],base64.urlsafe_b64encode(b'T'*32).decode(),'/tmp/backup-smoke-restored'))"
+subprocess.run(['docker','exec','dafeiyu','python','-c',restore_code,state['local_directory']],check=True)
+print('PASS: actual stack backup encrypts, persists, decrypts and restores databases, plugins and desktop files')

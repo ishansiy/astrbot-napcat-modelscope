@@ -3,6 +3,13 @@ import io, json, shutil, tempfile, urllib.request, zipfile
 from pathlib import Path
 _archives={}
 def fetch_plugin(spec, dest):
+    if spec.get('local_path'):
+        root=Path(__file__).parent.resolve()
+        source=(root/spec['local_path']).resolve()
+        if not source.is_relative_to(root):raise ValueError('Unsafe local plugin path')
+        shutil.copytree(source,dest,ignore=shutil.ignore_patterns('__pycache__'))
+        print('Bundled local plugin:',spec['name'],spec['revision'])
+        return
     url=f"https://codeload.github.com/{spec['repo']}/zip/{spec['revision']}"
     if url not in _archives:
         with urllib.request.urlopen(url,timeout=120) as response:
