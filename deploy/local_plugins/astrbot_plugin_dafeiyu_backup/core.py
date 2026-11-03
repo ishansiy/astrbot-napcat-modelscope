@@ -1,5 +1,5 @@
 """Consistent file/SQLite snapshots and authenticated streaming encryption."""
-import base64, hashlib, json, os, shutil, sqlite3, stat, time, zipfile
+import base64, hashlib, json, os, shutil, sqlite3, stat, subprocess, time, zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 from contextlib import closing
@@ -31,7 +31,35 @@ def snapshot_database(source,target):
     with closing(sqlite3.connect(source.resolve().as_uri()+'?mode=ro',uri=True,timeout=10)) as origin:
         with closing(sqlite3.connect(target)) as snapshot:
             origin.backup(snapshot,pages=256,progress=progress,sleep=.05)
-            if snapshot.execute('PRAGMA quick_check').fetchone()[0]!='ok':raise ValueError('SQLite 快照完整性校验失败')
+            try:healthy=snapshot.execute('PRAGMA quick_check').fetchone()[0]=='ok'
+            except sqlite3.DatabaseError:healthy=False
+    if healthy:return None
+    command=shutil.which('sqlite3')
+    if not command:raise ValueError('源 SQLite 已损坏；需要 sqlite3 恢复工具，未将不完整副本标为成功')
+    # Only the private backup copy is modified. Keep its original bytes as well.
+    original=target.with_suffix('.original');target.replace(original)
+    sql=target.with_suffix('.recovery.sql')
+    try:
+        with sql.open('wb') as outgoing:
+            result=subprocess.run([command,str(original),'.recover --ignore-freelist'],stdout=outgoing,stderr=subprocess.DEVNULL,timeout=120)
+        if result.returncode:raise ValueError('源 SQLite 恢复扫描失败')
+        with sql.open('rb') as incoming:
+            result=subprocess.run([command,str(target)],stdin=incoming,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=120)
+        if result.returncode:raise ValueError('源 SQLite 恢复副本重建失败')
+        unreadable=[];verified=[]
+        with closing(sqlite3.connect(original.as_uri()+'?mode=ro',uri=True)) as before,closing(sqlite3.connect(target)) as after:
+            if after.execute('PRAGMA quick_check').fetchone()[0]!='ok':raise ValueError('SQLite 恢复副本完整性校验失败')
+            tables=[row[0] for row in before.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]
+            for name in tables:
+                quoted='"'+name.replace('"','""')+'"'
+                query='SELECT * FROM '+quoted+' NOT INDEXED'
+                try:old=sorted(hashlib.sha256(repr(tuple(row)).encode()).digest() for row in before.execute(query))
+                except sqlite3.DatabaseError:unreadable.append(name);continue
+                new=sorted(hashlib.sha256(repr(tuple(row)).encode()).digest() for row in after.execute(query))
+                if old!=new:raise ValueError('SQLite 恢复副本与源库可读取的表不一致，已停止备份')
+                verified.append(name)
+        return {'original_snapshot':str(original),'unreadable_source_tables':unreadable,'verified_readable_tables':verified,'method':'sqlite3 .recover --ignore-freelist'}
+    finally:sql.unlink(missing_ok=True)
 
 def excluded(scope,relative):
     parts=relative.parts
@@ -47,7 +75,7 @@ def excluded(scope,relative):
 def build_archive(root,scopes,target,workspace):
     root=Path(root).resolve();workspace=Path(workspace)
     if not root.is_dir():raise ValueError('备份数据根目录不存在')
-    entries=[];directories=[];skipped=[];databases=[]
+    entries=[];directories=[];skipped=[];databases=[];recoveries=[]
     selected=[name for name in ('astrbot','desktop','napcat','qq','ollama') if scopes.get(name,False)]
     if not selected:raise ValueError('至少选择一个备份范围')
     roots=[(name,root/name) for name in selected]
@@ -77,7 +105,14 @@ def build_archive(root,scopes,target,workspace):
                 actual=source;temporary=None
                 if sqlite_file(source):
                     temporary=workspace/('sqlite-'+str(len(databases))+'.db')
-                    snapshot_database(source,temporary);actual=temporary;databases.append(name)
+                    recovery=snapshot_database(source,temporary);actual=temporary;databases.append(name)
+                    if recovery:
+                        original=Path(recovery.pop('original_snapshot'))
+                        forensic_name='_source_database_copies/'+name
+                        archive.write(original,forensic_name)
+                        entries.append({'path':forensic_name,'size':original.stat().st_size,'sha256':digest(original),'mode':0o600,'uid':0,'gid':0})
+                        original.unlink()
+                        recoveries.append({'path':name,'original_copy':forensic_name,**recovery})
                 item=zipfile.ZipInfo(name);item.external_attr=(info.st_mode&0xffff)<<16
                 item.compress_type=zipfile.ZIP_STORED if source.suffix.lower() in ('.gif','.jpg','.jpeg','.png','.webp','.zip','.mp4','.mp3','.ogg') else zipfile.ZIP_DEFLATED
                 checksum=hashlib.sha256();size=0
@@ -86,7 +121,7 @@ def build_archive(root,scopes,target,workspace):
                         outgoing.write(block);checksum.update(block);size+=len(block)
                 if temporary:temporary.unlink()
                 entries.append({'path':name,'size':size,'sha256':checksum.hexdigest(),'mode':stat.S_IMODE(info.st_mode),'uid':getattr(info,'st_uid',0),'gid':getattr(info,'st_gid',0),'mtime_ns':info.st_mtime_ns})
-        manifest={'format':FORMAT,'created_at':datetime.now(timezone.utc).isoformat(),'scopes':selected,'entries':entries,'directories':directories,'sqlite_snapshots':databases,'skipped':skipped}
+        manifest={'format':FORMAT,'created_at':datetime.now(timezone.utc).isoformat(),'scopes':selected,'entries':entries,'directories':directories,'sqlite_snapshots':databases,'skipped':skipped,'database_recoveries':recoveries}
         archive.writestr('_dafeiyu_backup_manifest.json',json.dumps(manifest,ensure_ascii=False))
     with zipfile.ZipFile(target) as archive:
         if archive.testzip() is not None:raise ValueError('备份 ZIP 校验失败')
@@ -169,4 +204,4 @@ def restore_bundle(bundle,key,output):
         for name in details['sqlite_snapshots']:
             with closing(sqlite3.connect((output/name).resolve().as_uri()+'?mode=ro',uri=True)) as db:
                 if db.execute('PRAGMA quick_check').fetchone()[0]!='ok':raise ValueError('恢复的 SQLite 校验失败')
-    return {'files':len(details['entries']),'sqlite_databases':len(details['sqlite_snapshots']),'scopes':details['scopes']}
+    return {'files':len(details['entries']),'sqlite_databases':len(details['sqlite_snapshots']),'scopes':details['scopes'],'database_recoveries':details.get('database_recoveries',[])}

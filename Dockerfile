@@ -30,7 +30,7 @@ RUN uv python install 3.12 && uv venv --python 3.12 /opt/astrbot-venv \
     && rm /tmp/novnc.tar.gz
 COPY deploy /opt/dafeiyu
 COPY persona /opt/dafeiyu/persona
-RUN python /opt/dafeiyu/fetch_plugins.py && \
+RUN command -v sqlite3 >/dev/null && python /opt/dafeiyu/fetch_plugins.py && \
     python /opt/dafeiyu/install_plugin_deps.py && \
     mkdir -p /app/napcat /app/.config/QQ /AstrBot/data && \
     unzip -q /opt/NapCat.Shell.zip -d /app/napcat && \

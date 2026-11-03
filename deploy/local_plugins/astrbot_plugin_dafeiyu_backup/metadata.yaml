@@ -2,7 +2,7 @@ name: astrbot_plugin_dafeiyu_backup
 display_name: 大肥鱼全量备份 · WebDAV
 desc: 加密备份记忆、配置、插件、表情包、桌面与 QQ 数据；WebDAV 地址、凭据、时间和保留份数均可在面板修改。
 author: ishansiy
-version: 1.0.0
+version: 1.0.1
 repo: https://github.com/ishansiy/astrbot-napcat-modelscope
 astrbot_version: ">=4.29,<5"
 support_platforms: []

@@ -36,7 +36,7 @@ def run(settings_file,state_dir,job_id):
             temporary=Path(temporary);archive=temporary/'backup.zip';encrypted=temporary/'backup.dfyb';bundle=temporary/'bundle';bundle.mkdir()
             update(stage='创建文件与 SQLite 一致性快照')
             details=build_archive(source,config['scope'],archive,temporary)
-            update(stage='加密并验证备份',file_count=len(details['entries']),sqlite_databases=len(details['sqlite_snapshots']),scopes=details['scopes'])
+            update(stage='加密并验证备份',file_count=len(details['entries']),sqlite_databases=len(details['sqlite_snapshots']),scopes=details['scopes'],database_recoveries=details['database_recoveries'])
             encrypt_archive(archive,encrypted,key)
             checked=temporary/'verification.zip';decrypt_archive(encrypted,checked,key)
             archive_hash=digest(archive)
@@ -44,6 +44,7 @@ def run(settings_file,state_dir,job_id):
             checked.unlink();archive.unlink()
             parts=split_archive(encrypted,bundle,max(8,min(256,int(config['backup']['part_size_mb'])))*1024*1024)
             manifest={'format':FORMAT,'id':folder,'installation_id':installation,'created_at':datetime.now(timezone.utc).isoformat(),'archive_sha256':archive_hash,'encrypted_sha256':digest(encrypted),'encrypted_size':encrypted.stat().st_size,'encryption':'AES-256-GCM','key_hint':__import__('hashlib').sha256(key_bytes(key)).hexdigest()[:12],'parts':parts,'scopes':details['scopes'],'file_count':len(details['entries']),'sqlite_databases':len(details['sqlite_snapshots'])}
+            manifest['database_recoveries']=details['database_recoveries']
             (bundle/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
             encrypted.unlink()
             update(stage='保存本地持久化副本',backup_id=folder,size_bytes=manifest['encrypted_size'],total_parts=len(parts))
@@ -67,7 +68,7 @@ def run(settings_file,state_dir,job_id):
                 info=json.loads(metadata.read_text(encoding='utf-8'))
                 if info.get('format')==FORMAT and info.get('installation_id')==installation:owned.append(candidate)
             for candidate in owned[:-max(1,int(config['schedule']['local_keep']))]:shutil.rmtree(candidate)
-            update(status='succeeded',stage='备份完成',finished_at=datetime.now(timezone.utc).isoformat())
+            update(status='succeeded',stage='备份完成（源库损坏已在备份副本中恢复，原始快照同时保留）' if details['database_recoveries'] else '备份完成',finished_at=datetime.now(timezone.utc).isoformat())
             atomic_json(state_dir/'last-success.json',state)
     except Exception as error:
         # Never persist network exception strings: signed redirect URLs can be sensitive.

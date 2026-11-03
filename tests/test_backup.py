@@ -1,12 +1,31 @@
-import base64,hashlib,json,os,sqlite3,sys,tempfile,threading,unittest,urllib.parse,zipfile
+import base64,hashlib,json,os,shutil,sqlite3,subprocess,sys,tempfile,threading,unittest,urllib.parse,zipfile
 from contextlib import closing
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 sys.path.insert(0,str(Path(__file__).parents[1]/'deploy/local_plugins/astrbot_plugin_dafeiyu_backup'))
-from core import FORMAT,build_archive,encrypt_archive,decrypt_archive,split_archive,digest,restore_bundle
+from core import FORMAT,build_archive,encrypt_archive,decrypt_archive,split_archive,digest,restore_bundle,snapshot_database
 from webdav import WebDAV,DavError
+RECOVERY_SUPPORTED=bool(shutil.which('sqlite3')) and '.recover' in subprocess.run([shutil.which('sqlite3'),':memory:','.help recover'],capture_output=True,text=True).stdout
 
 class BackupTest(unittest.TestCase):
+    @unittest.skipUnless(RECOVERY_SUPPORTED,'Local SQLite lacks .recover; recovery is verified inside the Arch container')
+    def test_corrupt_index_is_recovered_only_in_backup_copy_with_original_preserved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);source=root/'damaged.db'
+            with closing(sqlite3.connect(source)) as db:
+                db.execute('CREATE TABLE records (id INTEGER PRIMARY KEY, value TEXT)')
+                db.execute('CREATE INDEX record_value ON records(value)')
+                db.executemany('INSERT INTO records(value) VALUES (?)',[(str(i),) for i in range(500)])
+                db.commit();page=db.execute("SELECT rootpage FROM sqlite_master WHERE name='record_value'").fetchone()[0];size=db.execute('PRAGMA page_size').fetchone()[0]
+            with source.open('r+b') as target:target.seek((page-1)*size);target.write(b'\0')
+            original_hash=digest(source)
+            result=snapshot_database(source,root/'snapshot.db')
+            self.assertIsNotNone(result);self.assertTrue(Path(result['original_snapshot']).is_file())
+            self.assertEqual(digest(source),original_hash)
+            with closing(sqlite3.connect(root/'snapshot.db')) as db:
+                self.assertEqual(db.execute('PRAGMA quick_check').fetchone()[0],'ok')
+                self.assertEqual(db.execute('SELECT COUNT(*) FROM records').fetchone()[0],500)
+
     def test_live_wal_encrypted_roundtrip_preserves_memory_plugins_and_desktop(self):
         with tempfile.TemporaryDirectory() as tmp:
             directory=Path(tmp);root=directory/'source';(root/'astrbot/plugins/example').mkdir(parents=True);(root/'desktop/Documents/backups').mkdir(parents=True)

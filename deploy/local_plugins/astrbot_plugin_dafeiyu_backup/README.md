@@ -8,6 +8,8 @@
 
 本地副本默认位于 `/mnt/workspace/dafeiyu/backups/`。ZIP 校验后用 AES-256-GCM 加密，分成默认 64 MB 的文件。每片上传后实际 GET 下载并核对 SHA256，全部通过后才提交 `manifest.json` 并读回目录与清单。只有完整备份计入远程保留数量；清理只处理本插件格式且 installation_id 与当前安装一致的目录，不触碰其他文件。
 
+源 SQLite 已损坏时，只对备份副本执行 SQLite 官方 `.recover --ignore-freelist`，不覆盖源库。所有可读取表的逐行哈希必须与原始快照一致；无法读取的表和恢复情况记录在 `database_recoveries`，原始损坏快照同时保存在加密包的 `_source_database_copies/` 中。恢复不能保证找回源库早已损坏的数据；状态会明确提示该情况。Arch 镜像已校验 `sqlite3` 工具可用。
+
 ## 恢复
 
 请另存恢复密钥。更换密钥后，旧备份继续使用旧密钥。下载一个完整备份目录，保留其中的 `manifest.json` 和所有 `part-*.bin`，安装 `cryptography`，执行：
