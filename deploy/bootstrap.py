@@ -136,6 +136,7 @@ def main():
         write_json(onebot,{'network':{'httpServers':[],'httpSseServers':[],'httpClients':[],'websocketServers':[],'websocketClients':[{'name':'astrbot','enable':True,'url':'ws://127.0.0.1:6199/ws','messagePostFormat':'array','reportSelfMessage':False,'token':creds['onebot_token'],'debug':False,'heartInterval':30000,'reconnectInterval':5000}]},'musicSignUrl':'','enableLocalFile2Url':True,'parseMultMsg':False})
     disabled_plugins=seed_plugins(data)
     asyncio.run(seed_persona(data,disabled_plugins))
+    (data/'home').mkdir(exist_ok=True)
     (base/'ollama').mkdir(exist_ok=True)
     from desktop_setup import setup_desktop
     setup_desktop(base,creds,credentials)
