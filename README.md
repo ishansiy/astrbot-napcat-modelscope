@@ -59,7 +59,7 @@ AstrBot 使用其上游 AGPL-3.0 许可；NapCat 和各插件遵循各自上游�
 
 ## 已验证
 
-2026-11-03：[GitHub Actions](https://github.com/ishansiy/astrbot-napcat-modelscope/actions/runs/41646960430) 已通过源码检查、密码与配置覆盖保护、真实容器双面板登录、Arch/XFCE 与 Firefox 窗口、完整浏览器 noVNC 登录和连接测试、19 个插件加载与启用状态检查、Ollama 服务检查；重启及删除容器重建后的持久化恢复均通过。镜像源码提交：`bfa85364e2152e93793d0b55ef668cc79ec16207`，镜像标签：`sha-bfa85364e215`。表情包上传暂存文件使用 `/tmp`，安装后的资源和配置使用官方持久化目录。
+2026-11-03：[GitHub Actions](https://github.com/ishansiy/astrbot-napcat-modelscope/actions/runs/41652038671) 已通过源码检查、密码与配置覆盖保护、真实容器双面板登录、Arch/XFCE 与 Firefox 窗口、完整浏览器 noVNC 登录和连接测试、19 个插件加载与启用状态检查、Ollama 服务检查、表情包从临时目录导入持久化挂载的真实读回检查；重启及删除容器重建后的持久化恢复均通过。镜像源码提交：`580ef48d621c93f352adda336999d80820fdff43`，镜像标签：`sha-580ef48d621c`。表情包上传暂存文件使用 `/tmp`，安装后的资源和配置使用官方持久化目录。
 
 魔搭国际站云端验证：公开空间进入 Running；原 AstrBot 密码有效，人格内容的迁移前后 SHA256 一致；NapCat 管理页、独立桌面密码登录、真实云端桌面 WebSocket 均通过。桌面主目录和机器人数据使用官方 `/mnt/workspace/dafeiyu/`，迁移前的备份留在 `astrbot/backups/`。受限容器无法创建嵌套图像解码沙箱时，桌面启动脚本使用 Glycin 官方的容器内兼容选项；VNC 仍仅监听回环地址。
 
