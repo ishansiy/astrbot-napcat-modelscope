@@ -4,7 +4,10 @@ from pathlib import Path
 base='http://127.0.0.1:7860'
 jar=http.cookiejar.CookieJar();opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
 req=urllib.request.Request(base+'/api/auth/login',data=json.dumps({'username':'astrbot','password':'SmokeTest9Secret'}).encode(),headers={'Content-Type':'application/json'})
-assert json.load(opener.open(req))['status']=='ok'
+login=json.load(opener.open(req));assert login['status']=='ok'
+token=login.get('token') or (login.get('data') or {}).get('token')
+assert token,'Dashboard login did not return a session token'
+opener.addheaders=[('Authorization','Bearer '+token)]
 plugins=json.load(opener.open(base+'/api/v1/plugins'))['data']
 names={p['name'] for p in plugins}
 specs=json.loads(Path('deploy/plugins.lock.json').read_text())
