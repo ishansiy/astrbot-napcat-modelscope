@@ -35,6 +35,15 @@ def setup_desktop(base, creds, credentials):
         target=home/folder
         if not target.exists():
             target.mkdir(); os.chown(target,1000,1000)
+    panel=home/'.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml'
+    default_panel=Path('/etc/xdg/xfce4/panel/default.xml')
+    if not panel.exists() and default_panel.exists():
+        panel.parent.mkdir(parents=True,exist_ok=True)
+        shutil.copy2(default_panel,panel)
+        for item in panel.parents:
+            if item==home: break
+            os.chown(item,1000,1000)
+        os.chown(panel,1000,1000)
     launchers={
         'AstrBot.desktop':'[Desktop Entry]\nType=Link\nName=AstrBot\nURL=http://127.0.0.1:7860/\nIcon=applications-internet\n',
         'NapCat.desktop':'[Desktop Entry]\nType=Link\nName=NapCat\nURL=http://127.0.0.1:7860/napcat/webui/\nIcon=applications-internet\n',

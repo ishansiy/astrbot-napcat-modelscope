@@ -3,9 +3,9 @@ title: AstrBot NapCat 大肥鱼
 sdk: docker
 app_port: 7860
 ---
-# AstrBot + NapCat 大肥鱼 · ModelScope
+# Arch Linux XFCE + AstrBot + NapCat 大肥鱼 · ModelScope
 
-在单个容器中运行 AstrBot、NapCat、Xvfb 和 Nginx，统一通过 7860 访问。此仓库复刻自 [MoYangking/Astrbot-Napcat-huggingface](https://github.com/MoYangking/Astrbot-Napcat-huggingface)，保留 Git 历史与上游关联。魔搭适配版改用官方组件，移除了上游动态路由管理、文件管理器、同步服务和临时代理。
+在单个容器中运行 Arch Linux、XFCE、Firefox、AstrBot、NapCat 和 Nginx，统一通过 7860 访问。此仓库复刻自 [MoYangking/Astrbot-Napcat-huggingface](https://github.com/MoYangking/Astrbot-Napcat-huggingface)，保留 Git 历史与上游关联。魔搭适配版改用官方组件，移除了上游动态路由管理、文件管理器、同步服务和临时代理。
 
 ## 包含什么
 
@@ -18,7 +18,7 @@ app_port: 7860
 
 ## 魔搭国际站
 
-已部署的私有空间：[打开魔搭国际站](https://www.modelscope.ai/studios/uaa7813d3/astrbot-napcat-dafeiyu)。
+已部署的空间：[打开魔搭国际站](https://www.modelscope.ai/studios/uaa7813d3/astrbot-napcat-dafeiyu)。
 
 创建 **私有 Docker 创空间**，使用免费 CPU 资源。推荐使用本仓库根目录 `Dockerfile` 从锁定的官方组件构建。GHCR 镜像已发布；GitHub 首次发布的镜像默认私有，拉取需要 `read:packages` 凭据。魔搭当前通过同份源码构建，不保存 GitHub 拉取凭据。仅在镜像已设为公开或运行环境已经配置镜像认证时，才可使用：
 
@@ -26,7 +26,7 @@ app_port: 7860
 FROM ghcr.io/ishansiy/astrbot-napcat-modelscope:latest
 ```
 
-在创空间 Secrets 设置 `ASTRBOT_ADMIN_PASSWORD`、`NAPCAT_WEBUI_TOKEN`、`ONEBOT_TOKEN`，并可设置 `DEEPSEEK_API_KEY`。普通变量可设置 `OWNER_QQ`（你的聊天主号，非机器人小号）、`TZ=Asia/Shanghai`。
+在创空间 Secrets 设置 `ASTRBOT_ADMIN_PASSWORD`、`NAPCAT_WEBUI_TOKEN`、`ONEBOT_TOKEN`、`DESKTOP_PASSWORD`，并可设置 `DEEPSEEK_API_KEY`。普通变量可设置 `OWNER_QQ`（你的聊天主号，非机器人小号）、`TZ=Asia/Shanghai`。
 
 首次启动自动生成配置。已有配置不会被环境变量覆盖；后续修改模型、管理员和白名单，请使用 AstrBot 管理面板。更换 Secrets 不会自动重置已有密码。
 
@@ -34,6 +34,7 @@ FROM ghcr.io/ishansiy/astrbot-napcat-modelscope:latest
 | --- | --- |
 | `/` | AstrBot 管理面板及网页聊天，用户名 `astrbot` |
 | `/napcat/webui/` | NapCat 管理面板，使用 `NAPCAT_WEBUI_TOKEN` 登录并扫描 QQ 二维码 |
+| `/desktop/` | XFCE 浏览器桌面，HTTP 登录用户名 `desktop`，密码为 `DESKTOP_PASSWORD` |
 | `/healthz` | AstrBot 就绪检查 |
 
 ## 首次接入
@@ -60,3 +61,13 @@ AstrBot 使用其上游 AGPL-3.0 许可；NapCat 和各插件遵循各自上游�
 2026-11-03：GitHub Actions 已通过源码检查、持久化覆盖保护测试、真实容器双面板访问与 AstrBot 登录、重启及删除容器重建后的持久化恢复。镜像源码提交：`e3006046adb172bfe45e669b1b23a1423ec1cfa7`，镜像标签：`sha-e3006046adb1`。
 
 魔搭国际站云端验证：私有空间进入 Running；真实 AstrBot 登录及 NapCat 管理页访问通过。写入临时人格记录后重新部署，确认运行实例创建时间已改变、原密码和记录均保留；测试记录随后删除并回读确认。日志确认知识库与插件数据使用 `/mnt/workspace/dafeiyu/astrbot/`。QQ 尚未扫码，模型和 Embedding 凭据由用户在面板补充，尚未验证真实 QQ 对话。
+
+## Arch 桌面版
+
+系统用户空间来自官方 `archlinux:base` 镜像，使用 pacman 安装并预置 XFCE、Firefox、Thunar 文件管理器、终端、Mousepad 编辑器、中文字体、Git、Node.js、FFmpeg 和 Python 3.12 独立环境。TigerVNC 与 noVNC 提供 1440×900 桌面，无需在自己的电脑安装 VNC 软件。
+
+直接在新窗口打开应用的 `/desktop/`。桌面入口和控制 WebSocket 均有 HTTP 密码验证；VNC 原始端口仅监听容器回环地址。桌面以 UID 1000 用户 `desktop` 运行，可在终端通过 sudo 管理容器软件。
+
+桌面主目录 `/home/desktop` 指向 `/mnt/workspace/dafeiyu/desktop`，文件、下载、桌面设置和浏览器配置保存在官方持久化目录；缓存放在临时目录。已有 AstrBot 与 QQ 数据路径保持一致，首次初始化不会重置原密码或配置。
+
+额外安装到系统目录的软件不随容器重建保留；长期需要的软件请加入 Dockerfile 再发布镜像。容器共享魔搭宿主机内核，不提供独立启动的 Arch 内核或完整虚拟机。

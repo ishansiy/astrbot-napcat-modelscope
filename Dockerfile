@@ -9,7 +9,7 @@ ENV TZ=Asia/Shanghai LANG=C.UTF-8 PYTHONUNBUFFERED=1 \
 RUN pacman -Syu --noconfirm --needed \
     ca-certificates curl git uv python nodejs npm base-devel openssl unzip jq \
     nginx supervisor tigervnc dbus xfce4 xfce4-terminal mousepad firefox sudo \
-    noto-fonts noto-fonts-cjk ttf-dejavu xorg-xprop xorg-xwininfo \
+    noto-fonts noto-fonts-cjk ttf-dejavu adwaita-icon-theme xorg-xprop xorg-xwininfo \
     ffmpeg nss libnotify libsecret mesa alsa-lib gtk3 libxss libxtst \
     libx11 libxcb libxkbcommon libxkbcommon-x11 at-spi2-core \
     && pacman -Scc --noconfirm \
