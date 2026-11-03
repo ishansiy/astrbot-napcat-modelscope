@@ -12,6 +12,7 @@ with sync_playwright() as playwright:
     page.locator('input[name=password]').fill('SmokeTest9Secret')
     page.get_by_role('button').click()
     page.wait_for_function("document.documentElement.classList.contains('noVNC_connected')",timeout=45000)
+    page.locator('#noVNC_transition').wait_for(state='hidden')
     page.screenshot(path='desktop-browser.png')
     browser.close()
 print('PASS: browser form login and actual noVNC connection to the XFCE session')
