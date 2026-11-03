@@ -1,7 +1,7 @@
 name: Build, verify and publish
 on:
   push:
-    branches: [main]
+    branches: [main, arch-desktop]
   workflow_dispatch:
 permissions:
   contents: read
@@ -9,7 +9,7 @@ permissions:
 jobs:
   image:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -22,7 +22,7 @@ jobs:
         run: |
           python -m compileall -q deploy
           python -m unittest discover -s tests -p 'test_*.py'
-          bash -n deploy/entrypoint.sh deploy/run-napcat.sh
+          bash -n deploy/entrypoint.sh deploy/run-napcat.sh deploy/run-desktop.sh
       - name: Build test image
         uses: docker/build-push-action@v6
         with:
@@ -33,22 +33,33 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Container smoke test and restart persistence
         run: |
-          docker run -d --name dafeiyu -p 7860:7860 -v dafeiyu-test:/mnt/workspace -e ASTRBOT_ADMIN_PASSWORD=SmokeTest9Secret -e NAPCAT_WEBUI_TOKEN=SmokeTest9Token -e ONEBOT_TOKEN=SmokeTest9OneBot dafeiyu:test
+          docker run -d --name dafeiyu --shm-size=256m -p 7860:7860 -v dafeiyu-test:/mnt/workspace -e ASTRBOT_ADMIN_PASSWORD=SmokeTest9Secret -e NAPCAT_WEBUI_TOKEN=SmokeTest9Token -e ONEBOT_TOKEN=SmokeTest9OneBot dafeiyu:test
           python tests/smoke.py
+          python tests/desktop_smoke.py
           docker exec dafeiyu sh -c 'echo persistent > /mnt/workspace/probe'
           docker restart dafeiyu
           python tests/smoke.py
+          python tests/desktop_smoke.py
           docker exec dafeiyu grep -q persistent /mnt/workspace/probe
           docker rm -f dafeiyu
-          docker run -d --name dafeiyu -p 7860:7860 -v dafeiyu-test:/mnt/workspace -e ASTRBOT_ADMIN_PASSWORD=MustNotReplaceSaved9 -e NAPCAT_WEBUI_TOKEN=MustNotReplaceSaved9 dafeiyu:test
+          docker run -d --name dafeiyu --shm-size=256m -p 7860:7860 -v dafeiyu-test:/mnt/workspace -e ASTRBOT_ADMIN_PASSWORD=MustNotReplaceSaved9 -e NAPCAT_WEBUI_TOKEN=MustNotReplaceSaved9 dafeiyu:test
           python tests/smoke.py
+          python tests/desktop_smoke.py
           docker exec dafeiyu grep -q persistent /mnt/workspace/probe
+          docker exec -e DISPLAY=:99 dafeiyu python -c "from PIL import ImageGrab; ImageGrab.grab(xdisplay=':99').save('/tmp/desktop.png')"
+          docker cp dafeiyu:/tmp/desktop.png desktop.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch-xfce-desktop
+          path: desktop.png
       - name: Publish verified image
         run: |
           IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}
-          docker tag dafeiyu:test "$IMAGE:latest"
+          TAG=latest
+          if [ "$GITHUB_REF_NAME" != main ]; then TAG=arch-desktop; fi
+          docker tag dafeiyu:test "$IMAGE:$TAG"
           docker tag dafeiyu:test "$IMAGE:sha-${GITHUB_SHA:0:12}"
-          docker push "$IMAGE:latest"
+          docker push "$IMAGE:$TAG"
           docker push "$IMAGE:sha-${GITHUB_SHA:0:12}"
       - name: Failure diagnostics
         if: failure()
