@@ -20,7 +20,7 @@ app_port: 7860
 
 已部署的空间：[打开魔搭国际站](https://www.modelscope.ai/studios/uaa7813d3/astrbot-napcat-dafeiyu)。
 
-创建 **私有 Docker 创空间**，使用免费 CPU 资源。推荐使用本仓库根目录 `Dockerfile` 从锁定的官方组件构建。GHCR 镜像已发布；GitHub 首次发布的镜像默认私有，拉取需要 `read:packages` 凭据。魔搭当前通过同份源码构建，不保存 GitHub 拉取凭据。仅在镜像已设为公开或运行环境已经配置镜像认证时，才可使用：
+创建 Docker 创空间，使用免费 CPU 资源；当前部署按用户要求设为公开，各管理入口仍要求登录。推荐使用本仓库根目录 `Dockerfile` 从锁定的官方组件构建。GHCR 镜像已发布；GitHub 首次发布的镜像默认私有，拉取需要 `read:packages` 凭据。魔搭当前通过同份源码构建，不保存 GitHub 拉取凭据。仅在镜像已设为公开或运行环境已经配置镜像认证时，才可使用：
 
 ```dockerfile
 FROM ghcr.io/ishansiy/astrbot-napcat-modelscope:latest
@@ -34,7 +34,7 @@ FROM ghcr.io/ishansiy/astrbot-napcat-modelscope:latest
 | --- | --- |
 | `/` | AstrBot 管理面板及网页聊天，用户名 `astrbot` |
 | `/napcat/webui/` | NapCat 管理面板，使用 `NAPCAT_WEBUI_TOKEN` 登录并扫描 QQ 二维码 |
-| `/desktop/` | XFCE 浏览器桌面，HTTP 登录用户名 `desktop`，密码为 `DESKTOP_PASSWORD` |
+| `/desktop/` | XFCE 浏览器桌面，表单登录用户名 `desktop`，密码为 `DESKTOP_PASSWORD` |
 | `/healthz` | AstrBot 就绪检查 |
 
 ## 首次接入
@@ -58,15 +58,17 @@ AstrBot 使用其上游 AGPL-3.0 许可；NapCat 和各插件遵循各自上游�
 
 ## 已验证
 
-2026-11-03：GitHub Actions 已通过源码检查、持久化覆盖保护测试、真实容器双面板访问与 AstrBot 登录、重启及删除容器重建后的持久化恢复。镜像源码提交：`e3006046adb172bfe45e669b1b23a1423ec1cfa7`，镜像标签：`sha-e3006046adb1`。
+2026-11-03：[GitHub Actions](https://github.com/ishansiy/astrbot-napcat-modelscope/actions/runs/41632742542) 已通过源码检查、密码与配置覆盖保护、真实容器双面板登录、Arch/XFCE 与 Firefox 窗口、完整浏览器 noVNC 登录和连接测试；重启及删除容器重建后的持久化恢复均通过。镜像源码提交：`c1e4530a97f0bcf92633234b4c110b285de547de`，镜像标签：`sha-c1e4530a97f0`。
 
-魔搭国际站云端验证：私有空间进入 Running；真实 AstrBot 登录及 NapCat 管理页访问通过。写入临时人格记录后重新部署，确认运行实例创建时间已改变、原密码和记录均保留；测试记录随后删除并回读确认。日志确认知识库与插件数据使用 `/mnt/workspace/dafeiyu/astrbot/`。QQ 尚未扫码，模型和 Embedding 凭据由用户在面板补充，尚未验证真实 QQ 对话。
+魔搭国际站云端验证：公开空间进入 Running；原 AstrBot 密码有效，人格内容的迁移前后 SHA256 一致；NapCat 管理页、独立桌面密码登录、真实云端桌面 WebSocket 均通过。桌面主目录和机器人数据使用官方 `/mnt/workspace/dafeiyu/`，迁移前的备份留在 `astrbot/backups/`。受限容器无法创建嵌套图像解码沙箱时，桌面启动脚本使用 Glycin 官方的容器内兼容选项；VNC 仍仅监听回环地址。
+
+QQ 尚未扫码，模型和 Embedding 凭据由用户在面板补充，尚未验证真实 QQ 对话。
 
 ## Arch 桌面版
 
 系统用户空间来自官方 `archlinux:base` 镜像，使用 pacman 安装并预置 XFCE、Firefox、Thunar 文件管理器、终端、Mousepad 编辑器、中文字体、Git、Node.js、FFmpeg 和 Python 3.12 独立环境。TigerVNC 与 noVNC 提供 1440×900 桌面，无需在自己的电脑安装 VNC 软件。
 
-直接在新窗口打开应用的 `/desktop/`。桌面入口和控制 WebSocket 均有 HTTP 密码验证；VNC 原始端口仅监听容器回环地址。桌面以 UID 1000 用户 `desktop` 运行，可在终端通过 sudo 管理容器软件。
+直接在新窗口打开应用的 `/desktop/`。桌面入口和控制 WebSocket 均校验登录后的签名 Cookie；VNC 原始端口仅监听容器回环地址。桌面以 UID 1000 用户 `desktop` 运行，可在终端通过 sudo 管理容器软件。
 
 桌面主目录 `/home/desktop` 指向 `/mnt/workspace/dafeiyu/desktop`，文件、下载、桌面设置和浏览器配置保存在官方持久化目录；缓存放在临时目录。已有 AstrBot 与 QQ 数据路径保持一致，首次初始化不会重置原密码或配置。
 
