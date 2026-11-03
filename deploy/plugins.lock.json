@@ -138,7 +138,7 @@
   {
     "name": "astrbot_plugin_dafeiyu_backup",
     "local_path": "local_plugins/astrbot_plugin_dafeiyu_backup",
-    "revision": "1.0.1",
+    "revision": "1.0.2",
     "enabled_on_install": true,
     "license": "MIT"
   }

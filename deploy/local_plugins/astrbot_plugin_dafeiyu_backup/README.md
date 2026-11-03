@@ -6,7 +6,9 @@
 
 备份 `astrbot/`（数据库、记忆、配置、插件、表情包、知识库及用户文件）、`desktop/`（桌面文件及浏览器资料）、`napcat/`、`qq/` 和初始化凭据文件。Ollama 权重可选，默认不备份；记忆数据库与向量属于 AstrBot 数据，始终随所选范围保存。跳过派生缓存、旧备份、虚拟环境和运行时锁，不跟随符号链接。SQLite 使用在线 backup API，将已提交 WAL 纳入一致性快照，并执行 quick_check。
 
-本地副本默认位于 `/mnt/workspace/dafeiyu/backups/`。ZIP 校验后用 AES-256-GCM 加密，分成默认 64 MB 的文件。每片上传后实际 GET 下载并核对 SHA256，全部通过后才提交 `manifest.json` 并读回目录与清单。只有完整备份计入远程保留数量；清理只处理本插件格式且 installation_id 与当前安装一致的目录，不触碰其他文件。
+本地副本默认位于 `/mnt/workspace/dafeiyu/backups/`。ZIP 校验后用 AES-256-GCM 加密，分成默认 64 MB 的文件。日常可选快速模式（核对大小并下载首尾抽样）或完整模式（下载全部分片并核对 SHA256）；不支持 Range 时回退完整模式。通过校验后才提交 `manifest.json` 并读回目录与清单。恢复时始终验证全部文件和数据库。只有完整备份计入远程保留数量；清理只处理本插件格式且 installation_id 与当前安装一致的目录，不触碰其他文件。
+
+网络失败后可开启“重试上次本地副本上传”并保存，或使用已认证的 `/api/v1/plugins/extensions/astrbot_plugin_dafeiyu_backup/resume`，直接续传持久化加密副本。已通过所选校验的分片不重复上传；下载校验重试也不会重复上传整个大文件。`manifest` 和 `status` 接口继承 AstrBot 的面板权限，前者仅返回不含密码或密钥的备份元数据。
 
 源 SQLite 已损坏时，只对备份副本执行 SQLite 官方 `.recover --ignore-freelist`，不覆盖源库。所有可读取表的逐行哈希必须与原始快照一致；无法读取的表和恢复情况记录在 `database_recoveries`，原始损坏快照同时保存在加密包的 `_source_database_copies/` 中。恢复不能保证找回源库早已损坏的数据；状态会明确提示该情况。Arch 镜像已校验 `sqlite3` 工具可用。
 

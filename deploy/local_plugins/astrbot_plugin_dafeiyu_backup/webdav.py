@@ -4,7 +4,8 @@ from concurrent.futures import ThreadPoolExecutor,as_completed
 from pathlib import Path
 import httpx
 
-class DavError(RuntimeError):pass
+class DavError(RuntimeError):
+    def __init__(self,message,status_code=None):super().__init__(message);self.status_code=status_code
 
 class WebDAV:
     def __init__(self,config):
@@ -12,6 +13,7 @@ class WebDAV:
         if parsed.scheme not in ('https','http') or not parsed.netloc or parsed.username or parsed.query or parsed.fragment:raise DavError('WebDAV 地址需为 HTTP(S) 目录地址，账号密码请填写在独立字段')
         path=urllib.parse.quote(urllib.parse.unquote(parsed.path),safe='/').rstrip('/')+'/'
         self.base=urllib.parse.urlunsplit((parsed.scheme,parsed.netloc,path,'',''))
+        self.verification_mode=config.get('verification_mode','full')
         self.client=httpx.Client(auth=(config.get('username',''),config.get('password','')),verify=config.get('verify_tls',True),follow_redirects=True,timeout=httpx.Timeout(300,connect=30))
 
     def close(self):self.client.close()
@@ -19,7 +21,7 @@ class WebDAV:
     def url(self,*names):return self.base+'/'.join(urllib.parse.quote(name,safe='') for name in names)
 
     def check(self,response,expected):
-        if response.status_code not in expected:raise DavError('WebDAV 请求失败，HTTP '+str(response.status_code))
+        if response.status_code not in expected:raise DavError('WebDAV 请求失败，HTTP '+str(response.status_code),response.status_code)
 
     def ensure_collection(self,url=None,depth=0):
         url=url or self.base
@@ -44,28 +46,65 @@ class WebDAV:
             if re.fullmatch(r'dafeiyu-\d{8}T\d{6}Z-[0-9a-f]{8}',name):result.append(name)
         return sorted(set(result))
 
-    def upload_part(self,folder,path,part):
+    def verify_part(self,folder,path,part):
+        if self.verification_mode=='sample':
+            size=part['size'];sample=min(size,65536)
+            with Path(path).open('rb') as local:
+                for offset in sorted({0,max(0,size-sample)}):
+                    with self.client.stream('GET',self.url(folder,part['name']),headers={'Range':f'bytes={offset}-{offset+sample-1}'}) as response:
+                        if response.status_code==200:
+                            # Servers without Range support retain full verification.
+                            return self.verify_full_part(folder,part)
+                        self.check(response,(206,))
+                        if response.headers.get('Content-Range')!=f'bytes {offset}-{offset+sample-1}/{size}':raise DavError('WebDAV 分片大小或范围校验失败')
+                        data=response.read();local.seek(offset)
+                        if len(data)!=sample or data!=local.read(sample):raise DavError('WebDAV 首尾抽样内容不一致')
+            return
+        return self.verify_full_part(folder,part)
+
+    def verify_full_part(self,folder,part):
+        checksum=hashlib.sha256();size=0
+        with self.client.stream('GET',self.url(folder,part['name'])) as response:
+            self.check(response,(200,))
+            for data in response.iter_bytes(1024*1024):
+                checksum.update(data);size+=len(data)
+                if size>=part['size']:break
+        if size!=part['size'] or checksum.hexdigest()!=part['sha256']:raise DavError('WebDAV 分片完整下载校验不一致')
+
+    def upload_part(self,folder,path,part,resume=False):
+        if resume:
+            response=self.client.head(self.url(folder,part['name']))
+            if response.status_code==200 and int(response.headers.get('Content-Length','-1'))==part['size']:
+                try:self.verify_part(folder,path,part);return
+                except DavError as error:
+                    if error.status_code in (401,403):raise
         for attempt in range(3):
             try:
                 with Path(path).open('rb') as source:
-                    response=self.client.put(self.url(folder,part['name']),content=iter(lambda:source.read(1024*1024),b''),headers={'Content-Length':str(part['size']),'Content-Type':'application/octet-stream'})
-                self.check(response,(200,201,204))
-                checksum=hashlib.sha256();size=0
-                with self.client.stream('GET',self.url(folder,part['name'])) as response:
-                    self.check(response,(200,))
-                    for data in response.iter_bytes(1024*1024):checksum.update(data);size+=len(data)
-                if size!=part['size'] or checksum.hexdigest()!=part['sha256']:raise DavError('WebDAV 分片下载校验不一致')
-                return
-            except (httpx.TransportError,DavError):
+                    with self.client.stream('PUT',self.url(folder,part['name']),content=iter(lambda:source.read(1024*1024),b''),headers={'Content-Length':str(part['size']),'Content-Type':'application/octet-stream'}) as response:self.check(response,(200,201,204))
+                break
+            except (httpx.TransportError,DavError) as error:
+                if isinstance(error,DavError) and error.status_code in (400,401,403,413):raise
+                if attempt==2:raise
+                time.sleep(2**attempt)
+        # Retry download verification without uploading another large file version.
+        for attempt in range(3):
+            try:self.verify_part(folder,path,part);return
+            except (httpx.TransportError,DavError) as error:
+                if isinstance(error,DavError) and error.status_code in (400,401,403):raise
                 if attempt==2:raise
                 time.sleep(2**attempt)
 
-    def upload_bundle(self,directory,manifest,progress):
+    def upload_bundle(self,directory,manifest,progress,resume=False):
         folder=manifest['id'];self.ensure_collection(self.url(folder)+'/')
         with ThreadPoolExecutor(max_workers=2) as pool:
-            futures=[pool.submit(self.upload_part,folder,Path(directory)/part['name'],part) for part in manifest['parts']]
-            for index,future in enumerate(as_completed(futures),1):
-                future.result();progress(index,len(futures))
+            futures=[pool.submit(self.upload_part,folder,Path(directory)/part['name'],part,resume) for part in manifest['parts']]
+            try:
+                for index,future in enumerate(as_completed(futures),1):
+                    future.result();progress(index,len(futures))
+            except BaseException:
+                for future in futures:future.cancel()
+                raise
         response=self.client.put(self.url(folder,'manifest.json'),content=json.dumps(manifest,ensure_ascii=False).encode(),headers={'Content-Type':'application/json'})
         self.check(response,(200,201,204))
         response=self.client.get(self.url(folder,'manifest.json'));self.check(response,(200,))

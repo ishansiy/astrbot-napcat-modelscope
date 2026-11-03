@@ -18,11 +18,14 @@ class DafeiyuBackup(Star):
         identity=self.state_dir/'installation-id'
         if not identity.exists():identity.write_text(uuid.uuid4().hex,encoding='ascii')
         self.installation_id=identity.read_text().strip()
-        for route,handler,methods in [('status',self.api_status,['GET']),('run',self.api_run,['POST'])]:
+        for route,handler,methods in [('status',self.api_status,['GET']),('run',self.api_run,['POST']),('resume',self.api_resume,['POST']),('manifest',self.api_manifest,['GET'])]:
             context.register_web_api('/'+NAME+'/'+route,handler,methods,'大肥鱼全量备份（仅登录面板可用）')
 
     async def initialize(self):
         self.timer=asyncio.create_task(self.scheduler())
+        if self.config.get('actions',{}).get('retry_upload_now'):
+            self.config['actions']['retry_upload_now']=False;self.config.save_config()
+            await self.start(resume=True)
         if self.config.get('actions',{}).get('backup_now'):
             self.config['actions']['backup_now']=False;self.config.save_config()
             await self.start()
@@ -45,12 +48,16 @@ class DafeiyuBackup(Star):
             except Exception:next_run='定时规则或时区配置无效'
         return {'current':state,'last_success':self.read_json('last-success.json'),'next_run':next_run,'scheduled':schedule['enabled'],'webdav_enabled':self.config['webdav']['enabled']}
 
-    async def start(self):
+    async def start(self,resume=False):
         async with self.launch_lock:
-            if self.status()['current'].get('status') in ('queued','running'):return {'started':False,'reason':'已有备份正在进行'}
+            previous=self.status()['current']
+            if previous.get('status') in ('queued','running'):return {'started':False,'reason':'已有备份正在进行'}
             config=json.loads(json.dumps(dict(self.config)));key_bytes(config['backup']['encryption_key'])
             if config['webdav']['enabled'] and not config['webdav']['url'].strip():raise ValueError('请先在插件配置中填写 WebDAV 地址')
             config['_installation_id']=self.installation_id
+            if resume:
+                if not previous.get('local_verified') or not previous.get('local_directory'):raise ValueError('没有可续传的已验证本地副本')
+                config['_resume_bundle']=previous['local_directory']
             job_id=uuid.uuid4().hex
             descriptor,path=tempfile.mkstemp(prefix='dafeiyu-backup-settings-',suffix='.json')
             os.chmod(path,0o600)
@@ -68,8 +75,19 @@ class DafeiyuBackup(Star):
 
     async def api_status(self):return {'status':'ok','data':self.status()}
 
+    async def api_manifest(self):
+        current=self.read_json('state.json');directory=current.get('local_directory')
+        if not current.get('local_verified') or not directory:return {'status':'error','message':'暂无完整本地副本'}
+        directory=Path(directory).resolve();root=Path(self.config['backup']['local_directory']).resolve()
+        if not directory.is_relative_to(root):return {'status':'error','message':'本地副本不在当前备份目录内'}
+        return {'status':'ok','data':json.loads((directory/'manifest.json').read_text(encoding='utf-8'))}
+
     async def api_run(self):
         try:return {'status':'ok','data':await self.start()}
+        except ValueError as error:return {'status':'error','message':str(error)}
+
+    async def api_resume(self):
+        try:return {'status':'ok','data':await self.start(resume=True)}
         except ValueError as error:return {'status':'error','message':str(error)}
 
     async def scheduler(self):

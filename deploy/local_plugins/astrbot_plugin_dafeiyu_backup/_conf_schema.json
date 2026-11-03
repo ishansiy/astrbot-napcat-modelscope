@@ -5,6 +5,7 @@
     "username":{"type":"string","description":"WebDAV 用户名","default":""},
     "password":{"type":"string","description":"WebDAV 密码／应用密码","secret":true,"default":""},
     "verify_tls":{"type":"bool","description":"校验 HTTPS 证书","default":true}
+    ,"verification_mode":{"type":"string","description":"日常远程校验方式","default":"sample","options":["sample","full"],"hint":"sample：核对大小并下载首尾抽样；full：完整下载并核对 SHA256。恢复时始终核对全部文件和数据库。不支持 Range 时自动使用完整校验。"}
   }},
   "schedule":{"type":"object","description":"频率与保留份数","items":{
     "enabled":{"type":"bool","description":"启用自动备份","default":false},
@@ -28,5 +29,6 @@
   }},
   "actions":{"type":"object","description":"手动操作","items":{
     "backup_now":{"type":"bool","description":"立即备份一次","default":false,"hint":"打开并保存后执行一次，随后自动复位；进行中的备份不会重复启动。状态可用管理员指令 /备份状态 查看。"}
+    ,"retry_upload_now":{"type":"bool","description":"重试上次本地副本上传","default":false,"hint":"保存后只续传上次已完整保存的加密副本，已通过校验的远程分片不重新上传。"}
   }}
 }

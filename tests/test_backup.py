@@ -67,8 +67,10 @@ class BackupTest(unittest.TestCase):
 
 class DavHandler(BaseHTTPRequestHandler):
     def log_message(self,*args):pass
-    def response(self,status,content=b''):
-        self.send_response(status);self.send_header('Content-Length',str(len(content)));self.end_headers();self.wfile.write(content)
+    def response(self,status,content=b'',headers=None):
+        self.send_response(status);self.send_header('Content-Length',str(len(content)))
+        for key,value in (headers or {}).items():self.send_header(key,value)
+        self.end_headers();self.wfile.write(content)
     def authorized(self):
         if self.headers.get('Authorization')!='Basic '+base64.b64encode(b'user:password').decode():self.response(401);return False
         return True
@@ -77,9 +79,17 @@ class DavHandler(BaseHTTPRequestHandler):
         self.server.directories.add(self.path.rstrip('/')+'/');self.response(201)
     def do_PUT(self):
         if not self.authorized():return
+        self.server.put_count=getattr(self.server,'put_count',0)+1
         self.server.files[self.path]=self.rfile.read(int(self.headers['Content-Length']));self.response(201)
+    def do_HEAD(self):
+        if not self.authorized():return
+        if self.path not in self.server.files:self.response(404);return
+        self.send_response(200);self.send_header('Content-Length',str(len(self.server.files[self.path])));self.end_headers()
     def do_GET(self):
         if not self.authorized():return
+        if self.path in self.server.files and self.headers.get('Range'):
+            data=self.server.files[self.path];start,end=map(int,self.headers['Range'].removeprefix('bytes=').split('-'))
+            self.response(206,data[start:end+1],{'Content-Range':f'bytes {start}-{end}/{len(data)}'});return
         self.response(200,self.server.files[self.path]) if self.path in self.server.files else self.response(404)
     def do_PROPFIND(self):
         if not self.authorized():return
@@ -95,6 +105,23 @@ class DavHandler(BaseHTTPRequestHandler):
         self.server.directories.discard(self.path);self.response(204)
 
 class WebDAVTest(unittest.TestCase):
+    def test_sample_verification_checks_tail_and_resume_avoids_duplicate_upload(self):
+        server=ThreadingHTTPServer(('127.0.0.1',0),DavHandler);server.files={};server.directories={'/'}
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        dav=WebDAV({'url':'http://127.0.0.1:'+str(server.server_port)+'/dav/','username':'user','password':'password','verification_mode':'sample'})
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                path=Path(tmp);data=os.urandom(200000);(path/'part-0000.bin').write_bytes(data)
+                part={'name':'part-0000.bin','size':len(data),'sha256':hashlib.sha256(data).hexdigest()}
+                manifest={'format':FORMAT,'id':'dafeiyu-20261103T040001Z-00000001','installation_id':'ours','parts':[part]}
+                dav.upload_bundle(path,manifest,lambda *args:None)
+                count=server.put_count
+                dav.upload_part(manifest['id'],path/part['name'],part,resume=True)
+                self.assertEqual(server.put_count,count)
+                key=next(key for key in server.files if key.endswith('/part-0000.bin'))
+                server.files[key]=data[:-1]+bytes([data[-1]^1])
+                with self.assertRaises(DavError):dav.verify_part(manifest['id'],path/part['name'],part)
+        finally:dav.close();server.shutdown();server.server_close();thread.join()
     def test_upload_readback_and_retention_only_delete_this_installations_backups(self):
         server=ThreadingHTTPServer(('127.0.0.1',0),DavHandler);server.files={};server.directories={'/'}
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
