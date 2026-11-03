@@ -21,6 +21,7 @@ jobs:
       - name: Validate source
         run: |
           python -m compileall -q deploy
+          python -m unittest discover -s tests -p 'test_*.py'
           bash -n deploy/entrypoint.sh deploy/run-napcat.sh
       - name: Build test image
         uses: docker/build-push-action@v6
@@ -36,6 +37,10 @@ jobs:
           python tests/smoke.py
           docker exec dafeiyu sh -c 'echo persistent > /mnt/workspace/probe'
           docker restart dafeiyu
+          python tests/smoke.py
+          docker exec dafeiyu grep -q persistent /mnt/workspace/probe
+          docker rm -f dafeiyu
+          docker run -d --name dafeiyu -p 7860:7860 -v dafeiyu-test:/mnt/workspace -e ASTRBOT_ADMIN_PASSWORD=MustNotReplaceSaved9 -e NAPCAT_WEBUI_TOKEN=MustNotReplaceSaved9 dafeiyu:test
           python tests/smoke.py
           docker exec dafeiyu grep -q persistent /mnt/workspace/probe
       - name: Publish verified image

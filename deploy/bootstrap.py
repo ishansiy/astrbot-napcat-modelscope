@@ -17,7 +17,15 @@ def link_directory(link, target):
             raise RuntimeError(f'Refusing to redirect existing data link: {link}')
         return
     if link.exists():
-        shutil.copytree(link,target,dirs_exist_ok=True)
+        # Image defaults may exist again after a container rebuild. Only copy
+        # missing paths; the persistent version always wins.
+        for item in link.rglob('*'):
+            dest=target/item.relative_to(link)
+            if item.is_dir():
+                dest.mkdir(parents=True,exist_ok=True)
+            elif not dest.exists():
+                dest.parent.mkdir(parents=True,exist_ok=True)
+                shutil.copy2(item,dest)
         shutil.rmtree(link)
     link.parent.mkdir(parents=True,exist_ok=True)
     link.symlink_to(target,target_is_directory=True)
